@@ -1,6 +1,6 @@
-! SPDX-License-Identifier: CC-BY-4.0
-! This file is licensed under Creative Commons Attribution 4.0 International (CC BY 4.0)
-! See https://creativecommons.org/licenses/by/4.0/
+! SPDX-License-Identifier: MIT
+! This file is licensed under the MIT License.
+! See https://opensource.org/licenses/MIT
 
 program example
 
