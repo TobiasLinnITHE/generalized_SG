@@ -68,7 +68,7 @@ contains
     type(distribution_table), intent(in)  :: tab
       !!
     real,                     intent(in)  :: n(2)
-      !! normalized densities at left/right edge end-point
+      !! normalized densities at left/right edge end-point (same as F)
     real,                     intent(in)  :: dpot
       !! normalized potential drop
     real,                     intent(out) :: j
@@ -109,7 +109,7 @@ contains
     procedure(inv_distribution) :: idist
       !! inverse of cumulative distribution function
     real,           intent(in)  :: n(2)
-      !! normalized densities at left/right edge end-point
+      !! normalized densities at left/right edge end-point (same as F)
     real,           intent(in)  :: dpot
       !! normalized potential drop
     real,           intent(out) :: j
