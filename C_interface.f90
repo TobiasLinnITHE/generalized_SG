@@ -4,7 +4,9 @@
 
 module C_interface_m
 
-  use iso_c_binding
+  use, intrinsic :: iso_c_binding,   only: c_bool, c_char, c_double, c_f_pointer, c_f_procpointer, c_funptr, c_int, &
+    &                                      c_loc, c_null_ptr, c_ptr
+  use, intrinsic :: iso_fortran_env, only: real64
 
   use generalized_SG_m,     only: distribution, inv_distribution, get_current_tab, get_current
   use distribution_table_m, only: distribution_table, density_of_states, distribution_density
@@ -155,7 +157,7 @@ contains
     real(c_double),        intent(out) :: djdFR
     real(c_double),        intent(out) :: djddpot
 
-    real                              :: n(2), djdn(2)
+    real(real64)                      :: n(2), djdn(2)
     type(distribution_table), pointer :: ftab
 
     call c_f_pointer(tab, ftab)
@@ -188,7 +190,7 @@ contains
     real(c_double),        intent(out) :: djdFR
     real(c_double),        intent(out) :: djddpot
 
-    real                                 :: n(2), djdn(2)
+    real(real64)                         :: n(2), djdn(2)
     procedure(distribution),     pointer :: fdist
     procedure(inv_distribution), pointer :: fidist
 

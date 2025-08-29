@@ -4,20 +4,23 @@
 
 program example
 
+  use, intrinsic :: ieee_arithmetic, only: ieee_is_finite, ieee_value, IEEE_NEGATIVE_INF, IEEE_POSITIVE_INF
+  use, intrinsic :: iso_c_binding,   only: c_double, c_int
+  use, intrinsic :: iso_fortran_env, only: real64, real128
+
   use generalized_SG_m,     only: get_current_tab, get_current
-  use ieee_arithmetic,      only: ieee_is_finite, ieee_value, IEEE_NEGATIVE_INF, IEEE_POSITIVE_INF
-  use iso_c_binding,        only: c_double, c_int
   use distribution_table_m, only: distribution_table
   use util_m,               only: expm1
 
   implicit none
 
   logical                  :: status
-  real                     :: F(2), dpot, j, j_SG, djdF(2), djddpot
+  real(real64)             :: F(2), dpot, j, j_SG, djdF(2), djddpot
   type(distribution_table) :: tab_FD, tab_GF
 
   F    = [1.0, 42.0]
   dpot = 7.0
+
   j_SG = scharfetter_gummel(F, dpot)
   call get_current(maxwell_boltzmann, inv_maxwell_boltzmann, F, dpot, j, djdF, djddpot)
   print "(A)", "Maxwell-Boltzmann"
@@ -90,17 +93,17 @@ contains
   end subroutine
 
   function scharfetter_gummel(n, dpot) result(j)
-    real, intent(in) :: n(2)
-    real, intent(in) :: dpot
-    real             :: j
+    real(real64), intent(in) :: n(2)
+    real(real64), intent(in) :: dpot
+    real(real64)             :: j
 
     j = ber(-dpot) * n(1) - ber(dpot) * n(2)
   end function
 
   elemental function ber(x) result(b)
     !! Bernoulli function ber(x) = x / (exp(x) - 1)
-    real, intent(in) :: x
-    real             :: b
+    real(real64), intent(in) :: x
+    real(real64)             :: b
 
     if (x < -37) then
       b = - x
@@ -117,10 +120,10 @@ contains
 
   function sqrt_dos(t) result(Z) bind(c)
     !! square-root density of states in quad-precision
-    real(kind=16), value, intent(in) :: t
-    real(kind=16)                    :: Z
+    real(real128), value, intent(in) :: t
+    real(real128)                    :: Z
 
-    real(kind=16), parameter :: PI = 4 * atan(1.0_16)
+    real(real128), parameter :: PI = 4 * atan(1.0_16)
 
     if (t < 0) then
       Z = 0
@@ -131,21 +134,21 @@ contains
 
   function gaussian_dos(t) result(Z) bind(c)
     !! gaussian density of states in quad-precision
-    real(kind=16), value, intent(in) :: t
-    real(kind=16)                    :: Z
+    real(real128), value, intent(in) :: t
+    real(real128)                    :: Z
 
-    real(kind=16), parameter :: PI = 4 * atan(1.0_16), SIGMA = 4.0_16
+    real(real128), parameter :: PI = 4 * atan(1.0_16), SIGMA = 4.0_16
 
     Z = 1.0_16 / (sqrt(2 * PI) * SIGMA) * exp(-t**2 / (2 * SIGMA**2))
   end function
 
   function fermi_dirac_density(u, k) result(f) bind(c)
     !! Fermi-Dirac distribution (density) in quad-precision
-    real(kind=16), value, intent(in) :: u
+    real(real128), value, intent(in) :: u
     integer,       value, intent(in) :: k
-    real(kind=16)                    :: f
+    real(real128)                    :: f
 
-    real(kind=16) :: e, f0
+    real(real128) :: e, f0
 
     e  = exp(u)
     f0 = 1 / (1 + e)

@@ -4,10 +4,13 @@
 
 module distribution_table_m
 
-  use ieee_arithmetic, only: ieee_value, IEEE_POSITIVE_INF
-  use omp_lib,         only: omp_get_thread_num, omp_get_num_threads
-  use quad_m,          only: quad
-  use util_m,          only: bin_search, linspace, qsort
+  use, intrinsic :: iso_c_binding,   only: c_float128, c_int
+  use, intrinsic :: iso_fortran_env, only: real64, real128
+  use, intrinsic :: ieee_arithmetic, only: ieee_value, IEEE_POSITIVE_INF
+  use, intrinsic :: omp_lib,         only: omp_get_thread_num, omp_get_num_threads
+
+  use quad_m, only: quad
+  use util_m, only: bin_search, linspace, qsort
 
   implicit none
 
@@ -20,11 +23,11 @@ module distribution_table_m
     integer :: kmax
       !! maximum derivative stored
 
-    real,    allocatable :: eta(:)
+    real(real64), allocatable :: eta(:)
       !! chemical potential
-    real,    allocatable :: val(:,:)
+    real(real64), allocatable :: val(:,:)
       !! values and derivatives (0:kmax+1 x num_entries)
-    logical, allocatable :: lg(:,:)
+    logical,      allocatable :: lg(:,:)
       !! logarithmic interpolation? per interval (0:kmax+1 x num_entries)
   contains
     procedure :: init => distribution_table_init
@@ -37,22 +40,24 @@ module distribution_table_m
 
   interface
     function density_of_states(t) result(Z) bind(c)
+      import :: real128
+
       !! get density of states
-      real(kind=16), value, intent(in) :: t
+      real(real128), value, intent(in) :: t
         !! energy relative to band edge (in units of k_B T)
-      real(kind=16)                    :: Z
+      real(real128)                    :: Z
         !! return density of states
     end function
 
     function distribution_density(u, k) result(f) bind(c)
-      use iso_c_binding, only: c_int
+      import :: c_float128, c_int
 
       !! k-th derivative of distribution density (e.g. fermi-dirac or maxwell-boltzmann)
-      real(kind=16),  value, intent(in) :: u
+      real(c_float128), value, intent(in) :: u
         !! energy relative to chemical potential/fermi level (in units of k_B T)
-      integer(c_int), value, intent(in) :: k
+      integer(c_int),   value, intent(in) :: k
         !! k-th derivative (possible values from 0 to kmax)
-      real(kind=16)                     :: f
+      real(c_float128)                    :: f
         !! return k-th distribution density
     end function
   end interface
@@ -63,29 +68,32 @@ contains
     !! initialize distribution table
     class(distribution_table), intent(out) :: this
     procedure(density_of_states)           :: dos
-    real,                      intent(in)  :: t_min
+    real(real64),              intent(in)  :: t_min
       !! minimal t for Z(t) with Z(t<t_min) = 0
-    real,                      intent(in)  :: t_max
+    real(real64),              intent(in)  :: t_max
       !! maximal t for Z(t) with Z(t>t_max) = 0
     procedure(distribution_density)        :: dist
     logical,                   intent(in)  :: shift_eta
       !! shift integration by eta or not (might improve performance, should not change result)
-    real,                      intent(in)  :: eta_min
+    real(real64),              intent(in)  :: eta_min
       !! minimal supported eta
-    real,                      intent(in)  :: eta_max
+    real(real64),              intent(in)  :: eta_max
       !! maximal supported eta
     integer,                   intent(in)  :: kmax
       !! maximal derivative
 
-    integer, parameter :: N0 = 1024+1
-    real,    parameter :: RTOL = 1e-13, ATOL = 1e-16
+    integer,      parameter :: N0 = 1024+1
+    real(real64), parameter :: RTOL = 1e-13, ATOL = 1e-16
 
     integer              :: i, i1, i2, i3, j1, j2, j3, k, k1, k2, k3, ithread, nthreads, n, nstack, nveta, nvval, nvlg
     integer, allocatable :: nth(:), perm(:), stack(:), itmp(:)
     logical              :: status, lg1(0:kmax)
     logical, allocatable :: lg(:,:), vlg(:), ltmp(:)
-    real                 :: eta1, eta2, eta3, deta, val1(0:kmax), val2(0:kmax), err1(0:kmax), err2(0:kmax), sgn
-    real,    allocatable :: eta(:), veta(:), val(:,:), vval(:), rtmp(:)
+
+    real(real64)              :: eta1, eta2, eta3, deta, val1(0:kmax), val2(0:kmax), err1(0:kmax), err2(0:kmax), sgn
+    real(real64), allocatable :: eta(:), veta(:), val(:,:), vval(:), rtmp(:)
+
+    print "(A)", "Generating table..."
 
     this%kmax = kmax
 
@@ -276,20 +284,20 @@ contains
     !! generate single entry
     class(distribution_table), intent(in)  :: this
     procedure(density_of_states)           :: dos
-    real,                      intent(in)  :: t_min
+    real(real64),              intent(in)  :: t_min
       !! minimal t for Z(t) with Z(t<t_min) = 0
-    real,                      intent(in)  :: t_max
+    real(real64),              intent(in)  :: t_max
       !! maximal t for Z(t) with Z(t>t_max) = 0
     procedure(distribution_density)        :: dist
     logical,                   intent(in)  :: shift_eta
       !! shift integration by eta or not
-    real,                      intent(in)  :: eta
+    real(real64),              intent(in)  :: eta
       !! chemical potential
-    real,                      intent(out) :: val(0:)
+    real(real64),              intent(out) :: val(0:)
       !! output value + derivatives
 
     integer       :: k
-    real(kind=16) :: t_min16, t_max16, p16(0), dFda16, dFdb16, dFdp16(0), val16
+    real(real128) :: t_min16, t_max16, p16(0), dFda16, dFdb16, dFdp16(0), val16
 
     t_min16 = t_min
     t_max16 = t_max
@@ -306,11 +314,11 @@ contains
   contains
 
     subroutine integrand(t, p, g, dgdt, dgdp)
-      real(kind=16), intent(in)  :: t
-      real(kind=16), intent(in)  :: p(:)
-      real(kind=16), intent(out) :: g
-      real(kind=16), intent(out) :: dgdt
-      real(kind=16), intent(out) :: dgdp(:)
+      real(real128), intent(in)  :: t
+      real(real128), intent(in)  :: p(:)
+      real(real128), intent(out) :: g
+      real(real128), intent(out) :: dgdt
+      real(real128), intent(out) :: dgdp(:)
 
       dgdt = 0
 
@@ -327,17 +335,17 @@ contains
   subroutine distribution_table_get(this, eta, k, val, dvaldeta)
     !! get k-th derivative of cumulative distribution function from table
     class(distribution_table), intent(in)  :: this
-    real,                      intent(in)  :: eta
+    real(real64),              intent(in)  :: eta
       !! chemical potential
     integer,                   intent(in)  :: k
       !! derivative, must be between 0 and kmax
-    real,                      intent(out) :: val
+    real(real64),              intent(out) :: val
       !! output k-th derivative of cumulative distribution function
-    real,                      intent(out) :: dvaldeta
+    real(real64),              intent(out) :: dvaldeta
       !! output derivative of val wrt eta
 
-    integer :: i
-    real    :: eta1, eta2, deta, val1, dval1, val2, dval2, t, h00, h10, h01, h11, g00, g10, g01, g11
+    integer      :: i
+    real(real64) :: eta1, eta2, deta, val1, dval1, val2, dval2, t, h00, h10, h01, h11, g00, g10, g01, g11
 
     ! find interval
     i = bin_search(this%eta, eta)
@@ -380,18 +388,18 @@ contains
   subroutine distribution_table_inv(this, F, eta, detadF)
     !! get inverse of distribution function (only for k = 0)
     class(distribution_table), intent(in)  :: this
-    real,                      intent(in)  :: F
+    real(real64),              intent(in)  :: F
       !! value of distribution function
-    real,                      intent(out) :: eta
+    real(real64),              intent(out) :: eta
       !! output corresponding eta
-    real,                      intent(out) :: detadF
+    real(real64),              intent(out) :: detadF
     !! output derivative of eta wrt F
 
-    real,    parameter :: ATOL   = 5e-13
-    integer, parameter :: MAX_IT = 10
+    real(real64), parameter :: ATOL   = 5e-13
+    integer,      parameter :: MAX_IT = 10
 
-    integer :: i, it
-    real    :: eta1, eta2, deta, F1, dF1, F2, dF2, t, t_min, t_max, t_old, res, dresdt, dt, err
+    integer      :: i, it
+    real(real64) :: eta1, eta2, deta, F1, dF1, F2, dF2, t, t_min, t_max, t_old, res, dresdt, dt, err
 
     if ((F < this%val(0,1)) .or. (F > this%val(0,size(this%eta)))) then
       print "(A,ES25.16E3)", "F   = ", F
@@ -466,11 +474,11 @@ contains
   contains
 
     subroutine residual(t, res, dresdt)
-      real, intent(in)  :: t
-      real, intent(out) :: res
-      real, intent(out) :: dresdt
+      real(real64), intent(in)  :: t
+      real(real64), intent(out) :: res
+      real(real64), intent(out) :: dresdt
 
-      real :: h00, h10, h01, h11, g00, g10, g01, g11
+      real(real64) :: h00, h10, h01, h11, g00, g10, g01, g11
 
       h00 = (1 + 2 * t) * (1 - t)**2
       h10 = t * (1 - t)**2

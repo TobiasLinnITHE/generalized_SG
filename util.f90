@@ -4,8 +4,9 @@
 
 module util_m
 
-  use ieee_arithmetic
-  use iso_c_binding
+  use, intrinsic :: ieee_arithmetic, only: IEEE_POSITIVE_INF, ieee_class, ieee_is_finite, operator(==)
+  use, intrinsic :: iso_c_binding,   only: c_null_char
+  use, intrinsic :: iso_fortran_env, only: real64, real128
 
   implicit none
 
@@ -59,8 +60,8 @@ contains
 
   elemental function expm1(x) result(e)
     !! exp(x) - 1; accurate even for x close to 0
-    real, intent(in) :: x
-    real             :: e
+    real(real64), intent(in) :: x
+    real(real64)             :: e
 
     if (ieee_class(x) == IEEE_POSITIVE_INF) then
       e = x
@@ -79,8 +80,8 @@ contains
 
   elemental function expm1_16(x) result(e)
     !! quadprecision exp(x) - 1; accurate even for x close to 0
-    real(kind=16), intent(in) :: x
-    real(kind=16)             :: e
+    real(real128), intent(in) :: x
+    real(real128)             :: e
 
     if (ieee_class(x) == IEEE_POSITIVE_INF) then
       e = x
@@ -99,17 +100,17 @@ contains
 
   pure function linspace(x0, x1, nx) result(x)
     !! create array of linear spaced values
-    real,    intent(in) :: x0
+    real(real64), intent(in) :: x0
       !! start value of x
-    real,    intent(in) :: x1
+    real(real64), intent(in) :: x1
       !! end value of x
-    integer, intent(in) :: nx
+    integer,      intent(in) :: nx
       !! number of values
-    real                :: x(nx)
+    real(real64)             :: x(nx)
       !! return array x
 
-    integer :: i
-    real    :: dx
+    integer      :: i
+    real(real64) :: dx
 
     if (nx < 1) return
     x(nx) = x1
@@ -126,11 +127,11 @@ contains
 
   function bin_search(x, x1) result(i)
     !! find index of nearest value in sorted array
-    real, intent(in) :: x(:)
+    real(real64), intent(in) :: x(:)
       !! sorted array
-    real, intent(in) :: x1
+    real(real64), intent(in) :: x1
       !! value to find
-    integer          :: i
+    integer                  :: i
       !! return array index
 
     integer :: i0, i1
@@ -166,8 +167,8 @@ contains
   end function
 
   subroutine qsort(x, perm)
-    real,    intent(inout) :: x(:)
-    integer, intent(out)   :: perm(:)
+    real(real64), intent(inout) :: x(:)
+    integer,      intent(out)   :: perm(:)
 
     integer :: i
 
@@ -183,8 +184,8 @@ contains
       integer, intent(in) :: i0
       integer, intent(in) :: i1
 
-      integer :: mid, l, r
-      real    :: pivot
+      integer      :: mid, l, r
+      real(real64) :: pivot
 
       ! 0 or 1 element
       if (i0 >= i1) return
@@ -266,8 +267,8 @@ contains
       integer, intent(in) :: i0
       integer, intent(in) :: i1
 
-      integer :: itmp
-      real    :: tmp
+      integer      :: itmp
+      real(real64) :: tmp
 
       tmp      = x(i0)
       x(i0)    = x(i1)

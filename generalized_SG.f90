@@ -5,8 +5,10 @@
 module generalized_SG_m
   !! get edge-current by solving integral equation
 
-  use ieee_arithmetic
-  use iso_c_binding
+  use, intrinsic :: ieee_arithmetic, only: ieee_is_finite, ieee_next_after
+  use, intrinsic :: iso_c_binding,   only: c_double, c_int
+  use, intrinsic :: iso_fortran_env, only: real64, real128
+
   use distribution_table_m, only: distribution_table
   use quad_m,               only: quad
   use util_m,               only: int2str, expm1
@@ -18,7 +20,7 @@ module generalized_SG_m
 
   interface
     subroutine distribution(eta, k, F, dFdeta)  bind(c)
-      use iso_c_binding, only: c_double, c_int
+      import :: c_double, c_int
 
       !! k-th derivative of cumulative distribution function
       real(c_double), value, intent(in)  :: eta
@@ -32,7 +34,7 @@ module generalized_SG_m
     end subroutine
 
     subroutine inv_distribution(F, eta, detadF)  bind(c)
-      use iso_c_binding, only: c_double
+      import :: c_double
 
       !! inverse of cumulative distribution function
       real(c_double), value, intent(in)  :: F
@@ -54,12 +56,12 @@ module generalized_SG_m
   integer,      parameter :: CASE2A  = 6
   integer,      parameter :: CASE2B  = 7
   character(2), parameter :: CASENAME(7) = ["0A", "0B", "0C", "1a", "1b", "2a", "2b"]
-  real,         parameter :: CASETOL = 1e-3
+  real(real64), parameter :: CASETOL = 1e-3
 
-  integer, parameter :: MIN_IT = 6
-  integer, parameter :: MAX_IT = 50
-  real,    parameter :: RTOL   = 2e-14
-  real,    parameter :: ATOL   = 1e-16
+  integer,      parameter :: MIN_IT = 6
+  integer,      parameter :: MAX_IT = 50
+  real(real64), parameter :: RTOL   = 2e-14
+  real(real64), parameter :: ATOL   = 1e-16
 
 contains
 
@@ -67,15 +69,15 @@ contains
     !! get edge current, distribution function given by table
     type(distribution_table), intent(in)  :: tab
       !!
-    real,                     intent(in)  :: n(2)
+    real(real64),             intent(in)  :: n(2)
       !! normalized densities at left/right edge end-point (same as F)
-    real,                     intent(in)  :: dpot
+    real(real64),             intent(in)  :: dpot
       !! normalized potential drop
-    real,                     intent(out) :: j
+    real(real64),             intent(out) :: j
       !! output normalized current density on edge
-    real,                     intent(out) :: djdn(2)
+    real(real64),             intent(out) :: djdn(2)
       !! output derivative of j wrt n
-    real,                     intent(out) :: djddpot
+    real(real64),             intent(out) :: djddpot
       !! output derivative of j wrt dpot
 
     call get_current(dist, idist, n, dpot, j, djdn, djddpot)
@@ -108,22 +110,22 @@ contains
       !! cumulative distribution function
     procedure(inv_distribution) :: idist
       !! inverse of cumulative distribution function
-    real,           intent(in)  :: n(2)
+    real(real64),   intent(in)  :: n(2)
       !! normalized densities at left/right edge end-point (same as F)
-    real,           intent(in)  :: dpot
+    real(real64),   intent(in)  :: dpot
       !! normalized potential drop
-    real,           intent(out) :: j
+    real(real64),   intent(out) :: j
       !! output normalized current density on edge
-    real,           intent(out) :: djdn(2)
+    real(real64),   intent(out) :: djdn(2)
       !! output derivative of j wrt n
-    real,           intent(out) :: djddpot
+    real(real64),   intent(out) :: djddpot
       !! output derivative of j wrt dpot
 
-    integer :: cs, it
-    logical :: lfinite, rfinite
-    real    :: eta(2), detadn(2), deta, djdeta(2)
-    real    :: jj, jjmin, jjmax, jj_old, djj, err, dpot2
-    real    :: res, res_old, dresdjj, dresdeta(2), dresddpot
+    integer      :: cs, it
+    logical      :: lfinite, rfinite
+    real(real64) :: eta(2), detadn(2), deta, djdeta(2), tmp, dtmp(2)
+    real(real64) :: jj, jjmin, jjmax, jj_old, djj, err, dpot2
+    real(real64) :: res, res_old, dresdjj, dresdeta(2), dresddpot
 
     ! flip edge direction if potential drop is negative
     if (dpot < 0) then
@@ -188,11 +190,8 @@ contains
 
       ! further reduce range if possible
       if (cs == CASE0A) then
-        block
-          real :: I, dI(2)
-          call integrate_dist(dist, [eta(2) - dpot, eta(2)], -1, I, dI)
-          jjmin = max(jjmin, (dpot - deta) / I)
-        end block
+        call integrate_dist(dist, [eta(2) - dpot, eta(2)], -1, tmp, dtmp)
+        jjmin = max(jjmin, (dpot - deta) / tmp)
       elseif (cs == CASE0B) then
         jjmax = min(jjmax, n(1))
       elseif (cs == CASE0C) then
@@ -324,8 +323,8 @@ contains
         !! output derivative of j wrt dpot
 
       integer       :: k
-      real          :: I(-5:0), dI(2,-5:0), jc(1:5), djc(2,1:5)
-      real(kind=16) :: I_16(-5:0), jc_16(1:5), djc_16(2,1:5), tmp_16, dtmp_16(2), j_16
+      real(real64)  :: I(-5:0), dI(2,-5:0), jc(1:5), djc(2,1:5)
+      real(real128) :: I_16(-5:0), jc_16(1:5), djc_16(2,1:5), tmp_16, dtmp_16(2), j_16
 
       ! get I_k = integral_eta1^eta2 F(eta)^k deta for k = -5 to 0
       do k = -5, -1
@@ -384,29 +383,29 @@ contains
       j_16     = 0
       djdeta  = 0
       djddpot = 0
-      jc      = real(jc_16)
-      djc     = real(djc_16)
+      jc      = real(jc_16, kind = real64)
+      djc     = real(djc_16, kind = real64)
       do k = 1, 5
         if (.not. ieee_is_finite(jc_16(k))) cycle
         j_16     = j_16 + jc_16(k) * (dpot - I_16(0))**k
         djdeta  = djdeta + (djc(:,k) * (dpot - I(0)) - k * jc(k) * dI(:,0)) * (dpot - I(0))**(k-1)
         djddpot = djddpot + jc(k) * k * (dpot - I(0))**(k-1)
       end do
-      j = real(j_16)
+      j = real(j_16, kind = real64)
     end subroutine
 
     subroutine case_1b(j, djdeta, djddpot)
       !! |dpot| >> 0 and deta ~ 0
-      real,       intent(out) :: j
+      real(real64), intent(out) :: j
         !! output normalized current density on edge
-      real,       intent(out) :: djdeta(2)
+      real(real64), intent(out) :: djdeta(2)
         !! output derivative of j wrt eta
-      real,       intent(out) :: djddpot
+      real(real64), intent(out) :: djddpot
         !! output derivative of j wrt dpot
 
-      integer :: k
-      real    :: etam, F(0:3), dF(0:3), G(2), dG(2), e, dedetam, deddpot, u, dudetam, duddpot, v, dvdetam, dvddpot
-      real    :: jc(0:3), djcdetam(0:3), djcddpot(0:3)
+      integer      :: k
+      real(real64) :: etam, F(0:3), dF(0:3), G(2), dG(2), e, dedetam, deddpot, u, dudetam, duddpot, v, dvdetam, dvddpot
+      real(real64) :: jc(0:3), djcdetam(0:3), djcddpot(0:3)
 
       ! evaluate distribution and derivatives at mean eta
       etam = 0.5 * (eta(1) + eta(2))
@@ -512,15 +511,15 @@ contains
 
     subroutine case_2a(j, djdeta, djddpot)
       !! dpot ~ 0 and |deta| >> 0
-      real,       intent(out) :: j
+      real(real64), intent(out) :: j
         !! output normalized current density on edge
-      real,       intent(out) :: djdeta(2)
+      real(real64), intent(out) :: djdeta(2)
         !! output derivative of j wrt eta
-      real,       intent(out) :: djddpot
+      real(real64), intent(out) :: djddpot
         !! output derivative of j wrt dpot
 
-      integer :: k
-      real    :: I(5), dI(2,5), jc(0:4), djc(2,0:4), tmp, dtmp(2)
+      integer      :: k
+      real(real64) :: I(5), dI(2,5), jc(0:4), djc(2,0:4), tmp, dtmp(2)
 
       ! get I_k = integral_eta1^eta2 F(eta)^k deta for k = 0 to 5
       do k = 1, 5
@@ -572,15 +571,15 @@ contains
 
     subroutine case_2b(j, djdeta, djddpot)
       !! dpot ~ 0 and deta ~ 0
-      real,       intent(out) :: j
+      real(real64), intent(out) :: j
         !! output normalized current density on edge
-      real,       intent(out) :: djdeta(2)
+      real(real64), intent(out) :: djdeta(2)
         !! output derivative of j wrt eta
-      real,       intent(out) :: djddpot
+      real(real64), intent(out) :: djddpot
         !! output derivative of j wrt dpot
 
-      integer :: k
-      real    :: etam, F(0:2), dF(0:2), tmp, dtmpdetam, dtmpddeta, dtmpddpot, djdetam, djddeta
+      integer      :: k
+      real(real64) :: etam, F(0:2), dF(0:2), tmp, dtmpdetam, dtmpddeta, dtmpddpot, djdetam, djddeta
 
       ! evaluate distribution and derivatives at mean eta
       etam = 0.5 * (eta(1) + eta(2))
@@ -603,13 +602,13 @@ contains
     end subroutine
 
     subroutine residual(jj, res, dresdjj, dresdeta, dresddpot)
-      real, intent(in)  :: jj
-      real, intent(out) :: res
-      real, intent(out) :: dresdjj
-      real, intent(out) :: dresdeta(2)
-      real, intent(out) :: dresddpot
+      real(real64), intent(in)  :: jj
+      real(real64), intent(out) :: res
+      real(real64), intent(out) :: dresdjj
+      real(real64), intent(out) :: dresdeta(2)
+      real(real64), intent(out) :: dresddpot
 
-      real :: dresdjj1(1)
+      real(real64) :: dresdjj1(1)
 
       ! integrate using tanh-sinh
       call quad(integrand, eta(1), eta(2), [jj], res, dresdeta(1), dresdeta(2), dresdjj1, max_levels = 8)
@@ -621,13 +620,13 @@ contains
     end subroutine
 
     subroutine integrand(eta, jj, u, dudeta, dudjj)
-      real, intent(in)  :: eta
-      real, intent(in)  :: jj(:)
-      real, intent(out) :: u
-      real, intent(out) :: dudeta
-      real, intent(out) :: dudjj(:)
+      real(real64), intent(in)  :: eta
+      real(real64), intent(in)  :: jj(:)
+      real(real64), intent(out) :: u
+      real(real64), intent(out) :: dudeta
+      real(real64), intent(out) :: dudjj(:)
 
-      real :: t
+      real(real64) :: t
 
       call dist(eta, 0, u, dudeta)
       t        = u - jj(1)
@@ -654,18 +653,18 @@ contains
 
   subroutine integrate_dist(dist, eta, k, I, dIdeta)
     !! integral_eta1^eta2 dist(eta)^k deta
-    procedure(distribution) :: dist
+    procedure(distribution)   :: dist
       !! cumulative distribution function
-    real,       intent(in)  :: eta(2)
+    real(real64), intent(in)  :: eta(2)
       !! integration bounds
-    integer,    intent(in)  :: k
+    integer,      intent(in)  :: k
       !! exponent
-    real,       intent(out) :: I
+    real(real64), intent(out) :: I
       !! output integral over dist^k
-    real,       intent(out) :: dIdeta(2)
+    real(real64), intent(out) :: dIdeta(2)
       !! output derivatives of I wrt eta
 
-    real :: dum(0), dum2(0)
+    real(real64) :: dum(0), dum2(0)
 
     if (k == 0) then
       ! I = integral_eta1^eta2 deta = eta2 - eta1
@@ -679,11 +678,11 @@ contains
   contains
 
     subroutine dist_k(eta, p, F, dFdeta, dFdp)
-      real, intent(in)  :: eta
-      real, intent(in)  :: p(:)
-      real, intent(out) :: F
-      real, intent(out) :: dFdeta
-      real, intent(out) :: dFdp(:)
+      real(real64), intent(in)  :: eta
+      real(real64), intent(in)  :: p(:)
+      real(real64), intent(out) :: F
+      real(real64), intent(out) :: dFdeta
+      real(real64), intent(out) :: dFdp(:)
 
       call dist(eta, 0, F, dFdeta)
 

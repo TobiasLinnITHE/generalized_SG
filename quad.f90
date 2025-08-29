@@ -5,6 +5,8 @@
 module quad_m
   !! general purpose integration module (tanh-sinh quadrature)
 
+  use, intrinsic :: iso_fortran_env, only: real64, real128
+
   use ieee_arithmetic, only: ieee_is_finite
 
   implicit none
@@ -14,28 +16,32 @@ module quad_m
 
   interface
     subroutine integrand(x, p, f, dfdx, dfdp)
-      real, intent(in)  :: x
+      import :: real64
+
+      real(real64), intent(in)  :: x
         !! argument
-      real, intent(in)  :: p(:)
+      real(real64), intent(in)  :: p(:)
         !! parameters
-      real, intent(out) :: f
+      real(real64), intent(out) :: f
         !! output integrand
-      real, intent(out) :: dfdx
+      real(real64), intent(out) :: dfdx
         !! output derivative of f wrt x
-      real, intent(out) :: dfdp(:)
+      real(real64), intent(out) :: dfdp(:)
         !! output derivatives of f wrt p
     end subroutine
 
     subroutine integrand_16(x, p, f, dfdx, dfdp)
-      real(kind=16), intent(in)  :: x
+      import :: real128
+
+      real(real128), intent(in)  :: x
         !! argument
-      real(kind=16), intent(in)  :: p(:)
+      real(real128), intent(in)  :: p(:)
         !! parameters
-      real(kind=16), intent(out) :: f
+      real(real128), intent(out) :: f
         !! output integrand
-      real(kind=16), intent(out) :: dfdx
+      real(real128), intent(out) :: dfdx
         !! output derivative of f wrt x
-      real(kind=16), intent(out) :: dfdp(:)
+      real(real128), intent(out) :: dfdp(:)
         !! output derivatives of f wrt p
     end subroutine
   end interface
@@ -52,42 +58,42 @@ contains
 
   subroutine quad_8(func, a, b, p, I, dIda, dIdb, dIdp, rtol, err, min_levels, max_levels, ncalls)
     !! general purpose integration routine using tanh-sinh (finite interval), exp-sinh (one integration bound is infinite)
-    !! or sinh-sinh (both integration bounds are infinite) quadrature using quad precision
+    !! or sinh-sinh (both integration bounds are infinite) quadrature using double precision
     procedure(integrand) :: func
       !! function to integrate
-    real,              intent(in)  :: a
+    real(real64),           intent(in)  :: a
       !! lower integration bound
-    real,              intent(in)  :: b
+    real(real64),           intent(in)  :: b
       !! upper integration bound
-    real,              intent(in)  :: p(:)
+    real(real64),           intent(in)  :: p(:)
       !! additional parameters passed to the integrand
-    real,              intent(out) :: I
+    real(real64),           intent(out) :: I
       !! output value of integral
-    real,              intent(out) :: dIda
+    real(real64),           intent(out) :: dIda
       !! output derivative of I wrt lower bound
-    real,              intent(out) :: dIdb
+    real(real64),           intent(out) :: dIdb
       !! output derivative of I wrt upper bound
-    real,              intent(out) :: dIdp(:)
+    real(real64),           intent(out) :: dIdp(:)
       !! output derivatives of I wrt parameters
-    real,    optional, intent(in)  :: rtol
+    real(real64), optional, intent(in)  :: rtol
       !! error tolerance, overestimate (default: 1e-13)
-    real,    optional, intent(out) :: err
+    real(real64), optional, intent(out) :: err
       !! output error estimate
-    integer, optional, intent(in)  :: min_levels
+    integer,      optional, intent(in)  :: min_levels
       !! minimum number of levels (default: 2)
-    integer, optional, intent(in)  :: max_levels
+    integer,      optional, intent(in)  :: max_levels
       !! maximal number of levels (default: 16)
-    integer, optional, intent(out) :: ncalls
+    integer,      optional, intent(out) :: ncalls
       !! output number of function calls
 
     integer, parameter :: N_INIT = 5
       !! 2 * N_INIT + 1 is the minimum number of points for level 0
 
-    integer :: min_levels_, max_levels_, ncalls_, sgn, mode, level, dir, n0, n, nstep, nmax, const_counter
-    real    :: bnd(2), rtol_, dIdbnd(2), scale, h, dpartdbnd(2), dpartdp(size(p)), g, gmax
-    real    :: dsumdbnd(2), dsumdp(size(p)), sum, sum_err, x, x_old, dxdbnd(2), xref
-    real    :: f, f_tmp, dfdx, dfdbnd(2), dfdp(size(p)), dfdp_tmp(size(p))
-    real    :: part, part_old, eh, enh, enh_step, w, r, s
+    integer      :: min_levels_, max_levels_, ncalls_, sgn, mode, level, dir, n0, n, nstep, nmax, const_counter
+    real(real64) :: bnd(2), rtol_, dIdbnd(2), scale, h, dpartdbnd(2), dpartdp(size(p)), g, gmax
+    real(real64) :: dsumdbnd(2), dsumdp(size(p)), sum, sum_err, x, x_old, dxdbnd(2), xref
+    real(real64) :: f, f_tmp, dfdx, dfdbnd(2), dfdp(size(p)), dfdp_tmp(size(p))
+    real(real64) :: part, part_old, eh, enh, enh_step, w, r, s
 
     ! optional arguments
     min_levels_ = 2
@@ -271,23 +277,23 @@ contains
     !! or sinh-sinh (both integration bounds are infinite) quadrature using quad precision
     procedure(integrand_16)              :: func
       !! function to integrate
-    real(kind=16),           intent(in)  :: a
+    real(real128),           intent(in)  :: a
       !! lower integration bound
-    real(kind=16),           intent(in)  :: b
+    real(real128),           intent(in)  :: b
       !! upper integration bound
-    real(kind=16),           intent(in)  :: p(:)
+    real(real128),           intent(in)  :: p(:)
       !! additional parameters passed to the integrand
-    real(kind=16),           intent(out) :: I
+    real(real128),           intent(out) :: I
       !! output value of integral
-    real(kind=16),           intent(out) :: dIda
+    real(real128),           intent(out) :: dIda
       !! output derivative of I wrt lower bound
-    real(kind=16),           intent(out) :: dIdb
+    real(real128),           intent(out) :: dIdb
       !! output derivative of I wrt upper bound
-    real(kind=16),           intent(out) :: dIdp(:)
+    real(real128),           intent(out) :: dIdp(:)
       !! output derivatives of I wrt parameters
-    real(kind=16), optional, intent(in)  :: rtol
+    real(real128), optional, intent(in)  :: rtol
       !! error tolerance, overestimate (default: 1e-15)
-    real(kind=16), optional, intent(out) :: err
+    real(real128), optional, intent(out) :: err
       !! output error estimate
     integer,       optional, intent(in)  :: min_levels
       !! minimum number of levels (default: 2)
@@ -300,10 +306,10 @@ contains
       !! 2 * N_INIT + 1 is the minimum number of points for level 0
 
     integer       :: min_levels_, max_levels_, ncalls_, sgn, mode, level, dir, n0, n, nstep, nmax, const_counter
-    real(kind=16) :: bnd(2), rtol_, dIdbnd(2), scale, h, dpartdbnd(2), dpartdp(size(p)), g, gmax
-    real(kind=16) :: dsumdbnd(2), dsumdp(size(p)), sum, sum_err, x, x_old, dxdbnd(2), xref
-    real(kind=16) :: f, f_tmp, dfdx, dfdbnd(2), dfdp(size(p)), dfdp_tmp(size(p))
-    real(kind=16) :: part, part_old, eh, enh, enh_step, w, r, s
+    real(real128) :: bnd(2), rtol_, dIdbnd(2), scale, h, dpartdbnd(2), dpartdp(size(p)), g, gmax
+    real(real128) :: dsumdbnd(2), dsumdp(size(p)), sum, sum_err, x, x_old, dxdbnd(2), xref
+    real(real128) :: f, f_tmp, dfdx, dfdbnd(2), dfdp(size(p)), dfdp_tmp(size(p))
+    real(real128) :: part, part_old, eh, enh, enh_step, w, r, s
 
     ! optional arguments
     min_levels_ = 2
