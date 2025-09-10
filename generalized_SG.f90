@@ -68,7 +68,7 @@ contains
   subroutine get_current_tab(tab, n, dpot, j, djdn, djddpot)
     !! get edge current, distribution function given by table
     type(distribution_table), intent(in)  :: tab
-      !!
+      !! lookup table for cummulative distribution function
     real(real64),             intent(in)  :: n(2)
       !! normalized densities at left/right edge end-point (same as F)
     real(real64),             intent(in)  :: dpot
@@ -94,7 +94,6 @@ contains
     end subroutine
 
     subroutine idist(F, eta, detadF)
-      !! inverse Fermi-Dirac integral of order 1/2
       real(c_double), value, intent(in)  :: F
       real(c_double),        intent(out) :: eta
       real(c_double),        intent(out) :: detadF

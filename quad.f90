@@ -6,8 +6,7 @@ module quad_m
   !! general purpose integration module (tanh-sinh quadrature)
 
   use, intrinsic :: iso_fortran_env, only: real64, real128
-
-  use ieee_arithmetic, only: ieee_is_finite
+  use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
 
   implicit none
 
@@ -15,9 +14,8 @@ module quad_m
   public quad
 
   interface
-    subroutine integrand(x, p, f, dfdx, dfdp)
-      import :: real64
-
+    subroutine integrand_8(x, p, f, dfdx, dfdp)
+      import real64
       real(real64), intent(in)  :: x
         !! argument
       real(real64), intent(in)  :: p(:)
@@ -31,8 +29,7 @@ module quad_m
     end subroutine
 
     subroutine integrand_16(x, p, f, dfdx, dfdp)
-      import :: real128
-
+      import real128
       real(real128), intent(in)  :: x
         !! argument
       real(real128), intent(in)  :: p(:)
@@ -57,41 +54,40 @@ module quad_m
 contains
 
   subroutine quad_8(func, a, b, p, I, dIda, dIdb, dIdp, rtol, err, min_levels, max_levels, ncalls)
-    !! general purpose integration routine using tanh-sinh (finite interval), exp-sinh (one integration bound is infinite)
-    !! or sinh-sinh (both integration bounds are infinite) quadrature using double precision
-    procedure(integrand) :: func
-      !! function to integrate
+    !! general purpose integration routine in double precision (tanh-sinh, exp-sinh or sinh-sinh)
+    procedure(integrand_8)              :: func
+      !! integrand
     real(real64),           intent(in)  :: a
-      !! lower integration bound
+      !! lower bound (can be infinite)
     real(real64),           intent(in)  :: b
-      !! upper integration bound
+      !! upper bound (can be infinite)
     real(real64),           intent(in)  :: p(:)
-      !! additional parameters passed to the integrand
+      !! parameters passed to the integrand
     real(real64),           intent(out) :: I
-      !! output value of integral
+      !! output value of the integral
     real(real64),           intent(out) :: dIda
-      !! output derivative of I wrt lower bound
+      !! output derivative of I wrt a
     real(real64),           intent(out) :: dIdb
-      !! output derivative of I wrt upper bound
+      !! output derivative of I wrt b
     real(real64),           intent(out) :: dIdp(:)
-      !! output derivatives of I wrt parameters
+      !! output derivatives of I wrt p
     real(real64), optional, intent(in)  :: rtol
-      !! error tolerance, overestimate (default: 1e-13)
+      !! relative error tolerance, overestimate (default: 1e-13)
     real(real64), optional, intent(out) :: err
       !! output error estimate
     integer,      optional, intent(in)  :: min_levels
-      !! minimum number of levels (default: 2)
+      !! minimum number of refinement levels (default: 2)
     integer,      optional, intent(in)  :: max_levels
-      !! maximal number of levels (default: 16)
+      !! maximum number of refinement levels (default: 16)
     integer,      optional, intent(out) :: ncalls
-      !! output number of function calls
+      ! output number of calls to integrand
 
     integer, parameter :: N_INIT = 5
       !! 2 * N_INIT + 1 is the minimum number of points for level 0
 
     integer      :: min_levels_, max_levels_, ncalls_, sgn, mode, level, dir, n0, n, nstep, nmax, const_counter
     real(real64) :: bnd(2), rtol_, dIdbnd(2), scale, h, dpartdbnd(2), dpartdp(size(p)), g, gmax
-    real(real64) :: dsumdbnd(2), dsumdp(size(p)), sum, sum_err, x, x_old, dxdbnd(2), xref
+    real(real64) :: dsumdbnd(2), dsumdp(size(p)), sum, sum_err, x, x_old, dxdbnd(2), xref, xsgn
     real(real64) :: f, f_tmp, dfdx, dfdbnd(2), dfdp(size(p)), dfdp_tmp(size(p))
     real(real64) :: part, part_old, eh, enh, enh_step, w, r, s
 
@@ -121,14 +117,16 @@ contains
     elseif (ieee_is_finite(bnd(1))) then
       mode   = MODE_EXP_SINH
       scale  = 1
+      xsgn   = 1
       xref   = bnd(1)
-      x      = xref + scale ! x = a + exp(sinh(0)) = a + 1
+      x      = xref + xsgn ! x = a + exp(sinh(0)) = a + 1
       dxdbnd = [1.0, 0.0]
     elseif (ieee_is_finite(bnd(2))) then
       mode   = MODE_EXP_SINH
-      scale  = -1
+      scale  = 1
+      xsgn   = -1
       xref   = bnd(2)
-      x      = xref + scale ! x = b - exp(sinh(0)) = b - 1
+      x      = xref + xsgn ! x = b - exp(sinh(0)) = b - 1
       dxdbnd = [0.0, 1.0]
     else
       mode   = MODE_SINH_SINH
@@ -143,7 +141,7 @@ contains
     sum      = f
     dsumdbnd = dfdx * dxdbnd
     dsumdp   = dfdp
-    sum_err  = huge(1.0)
+    sum_err  = huge(sum_err)
 
     ! loop over levels
     level   = 0
@@ -201,7 +199,7 @@ contains
           case (MODE_EXP_SINH)
             r = exp(0.5 * (enh - 1 / enh))         ! r = exp(sinh(n * h))
             w = 0.5 * (enh + 1 / enh) * r          ! w = cosh(n * h) * exp(sinh(n * h))
-            x = xref + scale * r                   ! x = a[b] +[-] exp(sinh(n * h))
+            x = xref + xsgn * r                    ! x = a[b] +[-] exp(sinh(n * h))
           case (MODE_SINH_SINH)
             r = exp(0.5 * (enh - 1 / enh))         ! r = exp(sinh(n * h))
             x = 0.5 * (r - 1 / r)                  ! x = sinh(sinh(n * h))
@@ -243,7 +241,7 @@ contains
       end do
 
       ! update sum and estimate error (error is based on difference to prev. level => overestimate)
-      sum_err  = abs(sum - part) ! corresponds to |I_{level} - I_{level-1}| >= rtol_ |I_{level}|
+      sum_err  = abs(sum - part) ! corresponds to |I_level - I_level-1| >= rtol_ |I_level|
       sum      = sum   + part
       dsumdbnd = dsumdbnd + dpartdbnd
       dsumdp   = dsumdp   + dpartdp
@@ -273,48 +271,47 @@ contains
   end subroutine
 
   subroutine quad_16(func, a, b, p, I, dIda, dIdb, dIdp, rtol, err, min_levels, max_levels, ncalls)
-    !! general purpose integration routine using tanh-sinh (finite interval), exp-sinh (one integration bound is infinite)
-    !! or sinh-sinh (both integration bounds are infinite) quadrature using quad precision
+    !! general purpose integration routine in quad precision (tanh-sinh, exp-sinh or sinh-sinh)
     procedure(integrand_16)              :: func
-      !! function to integrate
+      !! integrand
     real(real128),           intent(in)  :: a
-      !! lower integration bound
+      !! lower bound (can be infinite)
     real(real128),           intent(in)  :: b
-      !! upper integration bound
+      !! upper bound (can be infinite)
     real(real128),           intent(in)  :: p(:)
-      !! additional parameters passed to the integrand
+      !! parameters passed to the integrand
     real(real128),           intent(out) :: I
-      !! output value of integral
+      !! output value of the integral
     real(real128),           intent(out) :: dIda
-      !! output derivative of I wrt lower bound
+      !! output derivative of I wrt a
     real(real128),           intent(out) :: dIdb
-      !! output derivative of I wrt upper bound
+      !! output derivative of I wrt b
     real(real128),           intent(out) :: dIdp(:)
-      !! output derivatives of I wrt parameters
+      !! output derivatives of I wrt p
     real(real128), optional, intent(in)  :: rtol
-      !! error tolerance, overestimate (default: 1e-15)
+      !! relative error tolerance, overestimate (default: 1e-13)
     real(real128), optional, intent(out) :: err
       !! output error estimate
     integer,       optional, intent(in)  :: min_levels
-      !! minimum number of levels (default: 2)
+      !! minimum number of refinement levels (default: 2)
     integer,       optional, intent(in)  :: max_levels
-      !! maximal number of levels (default: 16)
+      !! maximum number of refinement levels (default: 16)
     integer,       optional, intent(out) :: ncalls
-      !! output number of function calls
+      ! output number of calls to integrand
 
     integer, parameter :: N_INIT = 5
       !! 2 * N_INIT + 1 is the minimum number of points for level 0
 
     integer       :: min_levels_, max_levels_, ncalls_, sgn, mode, level, dir, n0, n, nstep, nmax, const_counter
     real(real128) :: bnd(2), rtol_, dIdbnd(2), scale, h, dpartdbnd(2), dpartdp(size(p)), g, gmax
-    real(real128) :: dsumdbnd(2), dsumdp(size(p)), sum, sum_err, x, x_old, dxdbnd(2), xref
+    real(real128) :: dsumdbnd(2), dsumdp(size(p)), sum, sum_err, x, x_old, dxdbnd(2), xref, xsgn
     real(real128) :: f, f_tmp, dfdx, dfdbnd(2), dfdp(size(p)), dfdp_tmp(size(p))
     real(real128) :: part, part_old, eh, enh, enh_step, w, r, s
 
     ! optional arguments
     min_levels_ = 2
     max_levels_ = 16
-    rtol_       = 1e-15
+    rtol_       = 1e-13
     if (present(min_levels)) min_levels_ = min_levels
     if (present(max_levels)) max_levels_ = max_levels
     if (present(rtol)) rtol_ = rtol
@@ -337,14 +334,16 @@ contains
     elseif (ieee_is_finite(bnd(1))) then
       mode   = MODE_EXP_SINH
       scale  = 1
+      xsgn   = 1
       xref   = bnd(1)
-      x      = xref + scale ! x = a + exp(sinh(0)) = a + 1
+      x      = xref + xsgn ! x = a + exp(sinh(0)) = a + 1
       dxdbnd = [1.0, 0.0]
     elseif (ieee_is_finite(bnd(2))) then
       mode   = MODE_EXP_SINH
-      scale  = -1
+      scale  = 1
+      xsgn   = -1
       xref   = bnd(2)
-      x      = xref + scale ! x = b - exp(sinh(0)) = b - 1
+      x      = xref + xsgn ! x = b - exp(sinh(0)) = b - 1
       dxdbnd = [0.0, 1.0]
     else
       mode   = MODE_SINH_SINH
@@ -359,7 +358,7 @@ contains
     sum      = f
     dsumdbnd = dfdx * dxdbnd
     dsumdp   = dfdp
-    sum_err  = huge(1.0_16)
+    sum_err  = huge(sum_err)
 
     ! loop over levels
     level   = 0
@@ -417,7 +416,7 @@ contains
           case (MODE_EXP_SINH)
             r = exp(0.5 * (enh - 1 / enh))         ! r = exp(sinh(n * h))
             w = 0.5 * (enh + 1 / enh) * r          ! w = cosh(n * h) * exp(sinh(n * h))
-            x = xref + scale * r                   ! x = a[b] +[-] exp(sinh(n * h))
+            x = xref + xsgn * r                    ! x = a[b] +[-] exp(sinh(n * h))
           case (MODE_SINH_SINH)
             r = exp(0.5 * (enh - 1 / enh))         ! r = exp(sinh(n * h))
             x = 0.5 * (r - 1 / r)                  ! x = sinh(sinh(n * h))
@@ -459,7 +458,7 @@ contains
       end do
 
       ! update sum and estimate error (error is based on difference to prev. level => overestimate)
-      sum_err  = abs(sum - part) ! corresponds to |I_{level} - I_{level-1}| >= rtol_ |I_{level}|
+      sum_err  = abs(sum - part) ! corresponds to |I_level - I_level-1| >= rtol_ |I_level|
       sum      = sum   + part
       dsumdbnd = dsumdbnd + dpartdbnd
       dsumdp   = dsumdp   + dpartdp
@@ -484,7 +483,7 @@ contains
     end if
 
     ! optional output
-    if (present(err)) err = sum_err / (abs(sum) + 1e-32)
+    if (present(err)) err = sum_err / (abs(sum) + 1e-16)
     if (present(ncalls)) ncalls = ncalls_
   end subroutine
 
