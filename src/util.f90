@@ -11,11 +11,30 @@ module util_m
   implicit none
 
   private
-  public int2str, cstrlen, c2fstring, expm1, linspace, bin_search, qsort
+  public :: PI, PI_128
+  public :: LOGGING_SILENT, LOGGING_ERROR, LOGGING_INFO, LOGGING_DEBUG
+  public :: int2str, cstrlen, c2fstring, ber, expm1, log1p, linspace, bin_search, qsort
 
   interface expm1
-    module procedure :: expm1, expm1_16
+    module procedure :: m_expm1, m_expm1_16
   end interface
+  interface log1p
+    module procedure :: m_log1p, m_log1p_16
+  end interface
+
+  real,          parameter :: PI     = 4 * atan(1.0)
+  real(real128), parameter :: PI_128 = 4 * atan(1.0_real128)
+
+  enum, bind(c)
+    enumerator :: LOGGING_SILENT = 0
+      !! do not print anything
+    enumerator :: LOGGING_ERROR  = 1
+      !! print information on errors
+    enumerator :: LOGGING_INFO   = 2
+      !! print more information
+    enumerator :: LOGGING_DEBUG  = 3
+      !! print extensive debug information
+  end enum
 
 contains
 
@@ -58,7 +77,25 @@ contains
     fstr = transfer(cstr(1:len(fstr)), fstr)
   end function
 
-  elemental function expm1(x) result(e)
+  elemental function ber(x) result(b)
+    !! bernoulli function ber(x) = x / (exp(x) - 1)
+    real, intent(in) :: x
+    real             :: b
+
+    if (x < -37) then
+      b = - x
+    elseif (abs(x) < 1e-9) then
+      b = 1.0 - 0.5 * x
+    elseif (abs(x) < 1e-4) then
+      b = 1.0 + x * (-0.5 + x / 12.0)
+    elseif (x < 712.5) then
+      b = 0.5 * x * exp(-0.5 * x) / sinh(0.5 * x)
+    else
+      b = 0.0
+    end if
+  end function
+
+  elemental function m_expm1(x) result(e)
     !! exp(x) - 1; accurate even for x close to 0
     real(real64), intent(in) :: x
     real(real64)             :: e
@@ -78,7 +115,7 @@ contains
     end if
   end function
 
-  elemental function expm1_16(x) result(e)
+  elemental function m_expm1_16(x) result(e)
     !! quadprecision exp(x) - 1; accurate even for x close to 0
     real(real128), intent(in) :: x
     real(real128)             :: e
@@ -94,6 +131,48 @@ contains
         e = -1
       else if (ieee_is_finite(e)) then
         e = (e - 1.0) * x / log(e)
+      end if
+    end if
+  end function
+
+  elemental function m_log1p(x) result(l)
+    !! log(1 + x); accurate even for x close to 0
+    real, intent(in) :: x
+    real             :: l
+
+    real :: u, d
+
+    if (ieee_class(x) == IEEE_POSITIVE_INF) then
+      l = x
+    else
+      u = 1.0 + x
+      d = u - 1.0
+
+      if (d == 0) then
+        l = x
+      else
+        l = log(u) * x / d
+      end if
+    end if
+  end function
+
+  elemental function m_log1p_16(x) result(l)
+    !! quadprecision log(1 + x); accurate even for x close to 0
+    real(real128), intent(in) :: x
+    real(real128)             :: l
+
+    real(real128) :: u, d
+
+    if (ieee_class(x) == IEEE_POSITIVE_INF) then
+      l = x
+    else
+      u = 1.0 + x
+      d = u - 1.0
+
+      if (d == 0) then
+        l = x
+      else
+        l = log(u) * x / d
       end if
     end if
   end function
