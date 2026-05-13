@@ -28,13 +28,12 @@ extern __float128 ITHE_fermi_dirac_density(__float128 u, int k);
 extern double ITHE_maxwell_boltzmann(double eta, int k);
 
 /**
- * Evaluate the inverse Maxwell-Boltzmann map and its derivative.
+ * Evaluate the inverse of the Maxwell-Boltzmann distribution.
  *
  * @param F Distribution value.
- * @param eta Output normalized chemical potential.
- * @param deta_dF Output derivative d eta / d F.
+ * @return Normalized chemical potential.
  */
-extern void ITHE_inv_maxwell_boltzmann(double F, double *eta, double *deta_dF);
+extern double ITHE_inv_maxwell_boltzmann(double F);
 
 /**
  * Evaluate the integral of the Maxwell-Boltzmann distribution raised to k.
@@ -65,13 +64,12 @@ extern void ITHE_init_fermi_dirac(double eta_min, double eta_max, int logging);
 extern double ITHE_fermi_dirac_1h(double eta, int k);
 
 /**
- * Evaluate the inverse Fermi-Dirac 1/2 map and its derivative.
+ * Evaluate the inverse Fermi-Dirac integral of order 1/2.
  *
  * @param F Distribution value.
- * @param eta Output normalized chemical potential.
- * @param deta_dF Output derivative d eta / d F.
+ * @return Normalized chemical potential.
  */
-extern void ITHE_inv_fermi_dirac_1h(double F, double *eta, double *deta_dF);
+extern double ITHE_inv_fermi_dirac_1h(double F);
 
 /**
  * Evaluate the integral of the Fermi-Dirac 1/2 distribution raised to k.
@@ -103,13 +101,12 @@ extern void ITHE_init_band_tailing(double t0, double eta_min, double eta_max, in
 extern double ITHE_band_tailing(double eta, int k);
 
 /**
- * Evaluate the inverse band-tailing map and its derivative.
+ * Evaluate the inverse of the band-tailing distribution.
  *
  * @param F Distribution value.
- * @param eta Output normalized chemical potential.
- * @param deta_dF Output derivative d eta / d F.
+ * @return Normalized chemical potential.
  */
-extern void ITHE_inv_band_tailing(double F, double *eta, double *deta_dF);
+extern double ITHE_inv_band_tailing(double F);
 
 /**
  * Evaluate the integral of the band-tailing distribution raised to k.
@@ -141,13 +138,12 @@ extern void ITHE_init_gauss_fermi(double sigma, double eta_min, double eta_max, 
 extern double ITHE_gauss_fermi(double eta, int k);
 
 /**
- * Evaluate the inverse Gauss-Fermi map and its derivative.
+ * Evaluate the inverse Gauss-Fermi distribution.
  *
  * @param F Distribution value.
- * @param eta Output normalized chemical potential.
- * @param deta_dF Output derivative d eta / d F.
+ * @return Normalized chemical potential.
  */
-extern void ITHE_inv_gauss_fermi(double F, double *eta, double *deta_dF);
+extern double ITHE_inv_gauss_fermi(double F);
 
 /**
  * Evaluate the integral of the Gauss-Fermi distribution raised to k.

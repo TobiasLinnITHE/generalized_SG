@@ -31,7 +31,7 @@ typedef void (*ITHE_integrand_derivatives_64)(double x, int n_par, const double 
 typedef void (*ITHE_integrand_derivatives_128)(__float128 x, int n_par, const __float128 *par, __float128 *f, __float128 *df_dx, __float128 *df_dpar);
 
 typedef double (*ITHE_distribution)(double eta, int k);
-typedef void (*ITHE_inv_distribution)(double F, double *eta, double *deta_dF);
+typedef double (*ITHE_inv_distribution)(double F);
 typedef double (*ITHE_int_distribution)(double eta1, double eta2, int k);
 
 /**
@@ -322,7 +322,7 @@ extern double ITHE_cheb_table_eval(
  * integrated distribution.
  *
  * @param dist      Function pointer to k-th derivative of cumulative distribution function: double dist(double eta, int k)
- * @param inv_dist  Function pointer to inverse of cumulative distribution function: void inv_dist(double F, double *eta, double *deta_dF)
+ * @param inv_dist  Function pointer to inverse of cumulative distribution function: double inv_dist(double F)
  * @param int_dist  Function pointer to integral of cumulative distribution function: double int_dist(double eta1, double eta2, int k)
  * @param FL        Value of F on left-hand end of edge
  * @param FR        Value of F on right-hand end of edge
