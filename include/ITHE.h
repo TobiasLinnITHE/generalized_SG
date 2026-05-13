@@ -12,6 +12,13 @@ extern "C" {
 #endif
 
 enum {
+  STATUS_SUCCESS          = 0,
+  STATUS_INVALID_INPUT    = 1,
+  STATUS_ITERATION_FAILED = 2,
+  STATUS_UNKNOWN_ERROR    = 3
+};
+
+enum {
   LOGGING_SILENT = 0,
   LOGGING_ERROR  = 1,
   LOGGING_INFO   = 2,

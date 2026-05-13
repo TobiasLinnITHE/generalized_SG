@@ -80,10 +80,10 @@ contains
     !! k-th derivative of Fermi-Dirac distribution density in quad precision
     real(c_float128), value, intent(in) :: u
       !! argument u = t - eta
-    integer(c_int), value, intent(in) :: k
+    integer(c_int),   value, intent(in) :: k
       !! derivative index
-    real(c_float128)             :: f
-      !! output f^{(k)}
+    real(c_float128)                    :: f
+      !! return f^{(k)}
 
     real(real128), parameter :: ZERO_3 = acosh(2.0_real128)
       !! zeros of third derivative (take +/-  of ZERO3)
@@ -170,18 +170,15 @@ contains
     F = exp(eta)
   end function
 
-  subroutine inv_maxwell_boltzmann(F, eta, deta_dF) bind(c, name = "ITHE_inv_maxwell_boltzmann")
+  function inv_maxwell_boltzmann(F) result(eta) bind(c, name = "ITHE_inv_maxwell_boltzmann")
     !! inverse of Maxwell-Boltzmann distribution function
-    real(c_double), value, intent(in)  :: F
+    real(c_double), value, intent(in) :: F
       !! value of Maxwell-Boltzmann distribution function
-    real(c_double),        intent(out) :: eta
-      !! output normalized chemical potential corresponding to F
-    real(c_double),        intent(out) :: deta_dF
-      !! output derivative of eta wrt F
+    real(c_double)                    :: eta
+      !! return normalized chemical potential corresponding to F
 
-    eta     = log(F)
-    deta_dF = 1 / F
-  end subroutine
+    eta = log(F)
+  end function
 
   function int_maxwell_boltzmann(eta1, eta2, k) result(I) bind(c, name = "ITHE_int_maxwell_boltzmann")
     !! integrate Maxwell-Boltzmann distribution function exponentiated by k
@@ -249,18 +246,15 @@ contains
     end select
   end function
 
-  subroutine inv_fermi_dirac_1h(F, eta, deta_dF) bind(c, name = "ITHE_inv_fermi_dirac_1h")
+  function inv_fermi_dirac_1h(F) result(eta) bind(c, name = "ITHE_inv_fermi_dirac_1h")
     !! inverse of Fermi-Dirac integral of order 1/2
-    real(c_double), value, intent(in)  :: F
+    real(c_double), value, intent(in) :: F
       !! value of cumulative distribution function
-    real(c_double),        intent(out) :: eta
-      !! output normalized chemical potential corresponding to F
-    real(c_double),        intent(out) :: deta_dF
-      !! output derivative of eta wrt F
+    real(c_double)                    :: eta
+      !! return normalized chemical potential corresponding to F
 
-    eta     = inv_fd_1h(F)
-    deta_dF = 1 / fd_m1h(eta)
-  end subroutine
+    eta = inv_fd_1h(F)
+  end function
 
   function int_fermi_dirac_1h(eta1, eta2, k) result(I) bind(c, name = "ITHE_int_fermi_dirac_1h")
     !! integrate Fermi-Dirac integral of order 1/2 exponentiated by k
@@ -376,14 +370,12 @@ contains
     end if
   end function
 
-  subroutine inv_band_tailing(F, eta, deta_dF) bind(c, name = "ITHE_inv_band_tailing")
+  function inv_band_tailing(F) result(eta) bind(c, name = "ITHE_inv_band_tailing")
     !! inverse of Fermi-Dirac integral with band-tailing
-    real(c_double), value, intent(in)  :: F
+    real(c_double), value, intent(in) :: F
       !! value of cumulative distribution function
-    real(c_double),        intent(out) :: eta
-      !! output normalized chemical potential corresponding to F
-    real(c_double),        intent(out) :: deta_dF
-      !! output derivative of eta wrt F
+    real(c_double)                    :: eta
+      !! return normalized chemical potential corresponding to F
 
     integer,      parameter :: MIN_ITERATIONS = 1
     integer,      parameter :: MAX_ITERATIONS = 10
@@ -395,7 +387,7 @@ contains
     ! initial guess
     if (F <= bt%F_small) then
       ! eta <= eta_small
-      if (bt%t0 < 0.5) then
+      if (bt%t0 < 0.5_real64) then
         eta = log(F / bt%B)
       else
         eta = 2 * bt%t0 * log(F / bt%A)
@@ -424,10 +416,7 @@ contains
       eta  = eta + deta
       err  = abs(deta)
     end do
-
-    ! implicit differentiation
-    deta_dF = 1 / dG_deta
-  end subroutine
+  end function
 
   function int_band_tailing(eta1, eta2, k) result(I) bind(c, name = "ITHE_int_band_tailing")
     !! integrate Fermi-Dirac integral with band-tailing exponentiated by k
@@ -489,7 +478,7 @@ contains
     real(c_float128),        intent(in) :: par(n_par)
       !! additional parameters: none
     real(c_float128)                    :: f
-      !! output integrand
+      !! return integrand
 
     f = 2 * exp(x * x) / sqrt(PI_128)
   end function
@@ -511,7 +500,7 @@ contains
     f = exp(u / (2 * t0)) / (exp(u) + 1)
   end function
 
-  function band_tailing_center(eta, n_par, par) result(F)
+  function band_tailing_center(eta, n_par, par) result(F) bind(c)
     !! slow evaluation of F(eta) for t0 - uc < eta < t0 + uc using numerical quadrature
     real(c_double), value, intent(in) :: eta
       !! eta
@@ -652,14 +641,12 @@ contains
     F = gf%ctab(k)%eval(eta)
   end function
 
-  subroutine inv_gauss_fermi(F, eta, deta_dF) bind(c, name = "ITHE_inv_gauss_fermi")
+  function inv_gauss_fermi(F) result(eta) bind(c, name = "ITHE_inv_gauss_fermi")
     !! inverse of Gauss-Fermi integral
-    real(c_double), value, intent(in)  :: F
+    real(c_double), value, intent(in) :: F
       !! value of cumulative distribution function
-    real(c_double),        intent(out) :: eta
-      !! output normalized chemical potential corresponding to F
-    real(c_double),        intent(out) :: deta_dF
-      !! output derivative of eta wrt F
+    real(c_double)                    :: eta
+      !! return normalized chemical potential corresponding to F
 
     integer,      parameter :: MIN_ITERATIONS = 1
     integer,      parameter :: MAX_ITERATIONS = 10
@@ -691,10 +678,7 @@ contains
       eta  = eta + deta
       err  = abs(deta)
     end do
-
-    ! implicit differentiation
-    deta_dF = 1 / dG_deta
-  end subroutine
+  end function
 
   function int_gauss_fermi(eta1, eta2, k) result(I) bind(c, name = "ITHE_int_gauss_fermi")
     !! integrate Fermi-Dirac integral with band-tailing exponentiated by k

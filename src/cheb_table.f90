@@ -502,7 +502,7 @@ contains
     procedure(funct)              :: func
       !! function to interpolate
     real(real64),   intent(in)    :: par(:)
-      !! addtional parameters passed to function
+      !! additional parameters passed to function
     real(real64),   intent(in)    :: xcheb(0:)
       !! chebyshev nodes
     type(interval), intent(inout) :: intervals(:)
@@ -649,7 +649,7 @@ contains
         i0 = i1 + 1
         i1 = i1 + 2 * (max_degree + 1)
 
-        ! the Chebyshev coefficients are given by the scaled real parts of the FFT coeffcients (imag should be zero)
+        ! the Chebyshev coefficients are given by the scaled real parts of the FFT coefficients (imag should be zero)
         intvl%cheb_coeff(0:max_degree) = extract_chebyshev_coefficients(fft(i0:i1))
 
         ! determine degree by plateau detection

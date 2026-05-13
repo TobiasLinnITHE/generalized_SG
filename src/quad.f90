@@ -131,9 +131,9 @@ contains
       !! output number of calls to integrand
 
     integer        :: min_levels_, max_levels_, n_calls_
-    integer        :: sgn, mode, level, dir, n0, n, n_step, nmax, const_counter
-    real(real64) :: bnd(2), rtol_, scale, h, g, gmax
-    real(real64) :: sum, sum_err, x, x_old, xref, xsgn
+    integer        :: sgn, mode, level, dir, n0, n, n_step, n_max, const_counter
+    real(real64) :: bnd(2), rtol_, scale, h, g, g_max
+    real(real64) :: sum, sum_err, x, x_old, x_ref, x_sgn
     real(real64) :: f, f_tmp
     real(real64) :: part, part_old, eh, enh, enh_step, w, r, s
 
@@ -167,15 +167,15 @@ contains
     elseif (ieee_is_finite(bnd(1))) then
       mode  = MODE_EXP_SINH
       scale = 1
-      xsgn  = 1
-      xref  = bnd(1)
-      x     = xref + xsgn ! x = a + exp(sinh(0)) = a + 1
+      x_sgn = 1
+      x_ref = bnd(1)
+      x     = x_ref + x_sgn ! x = a + exp(sinh(0)) = a + 1
     elseif (ieee_is_finite(bnd(2))) then
       mode  = MODE_EXP_SINH
       scale = 1
-      xsgn  = -1
-      xref  = bnd(2)
-      x     = xref + xsgn ! x = b - exp(sinh(0)) = b - 1
+      x_sgn = -1
+      x_ref = bnd(2)
+      x     = x_ref + x_sgn ! x = b - exp(sinh(0)) = b - 1
     else
       mode  = MODE_SINH_SINH
       scale = 1
@@ -192,14 +192,14 @@ contains
     level  = 0
     h      = 2      ! twice initial step size
     n_step = 1      ! n stepsize (1 for level == 0, 2 for level > 0)
-    gmax   = abs(f) ! initial maximum
-    nmax   = 0      ! initial maximum position
+    g_max  = abs(f) ! initial maximum
+    n_max  = 0      ! initial maximum position
     do while ((level < min_levels_) .or. ((sum_err > rtol_ * abs(sum)) .and. (level <= max_levels_)))
       h  = 0.5 * h
       eh = exp(h)
 
       ! start n at maximum of previous level
-      n0 = 2 * nmax
+      n0 = 2 * n_max
 
       ! reset partial sum value
       part = 0
@@ -237,14 +237,14 @@ contains
             w = (enh + 1 / enh) * s / (1 + r) ! w = cosh(n * h) / cosh(sinh(n * h))**2
             x = bnd(2) - scale * s            ! x = (a+b)/2 + (b-a)/2 * tanh(sinh(n * h))
           case (MODE_EXP_SINH)
-            r = exp(0.5 * (enh - 1 / enh))         ! r = exp(sinh(n * h))
-            w = 0.5 * (enh + 1 / enh) * r          ! w = cosh(n * h) * exp(sinh(n * h))
-            x = xref + xsgn * r                    ! x = a[b] +[-] exp(sinh(n * h))
+            r = exp(0.5 * (enh - 1 / enh))    ! r = exp(sinh(n * h))
+            w = 0.5 * (enh + 1 / enh) * r     ! w = cosh(n * h) * exp(sinh(n * h))
+            x = x_ref + x_sgn * r             ! x = a[b] +[-] exp(sinh(n * h))
           case (MODE_SINH_SINH)
-            r = exp(0.5 * (enh - 1 / enh))         ! r = exp(sinh(n * h))
-            x = 0.5 * (r - 1 / r)                  ! x = sinh(sinh(n * h))
-            r = 0.5 * (r + 1 / r)                  ! r = cosh(sinh(n * h))
-            w = 0.5 * (enh + 1 / enh) * r          ! w = cosh(n * h) * cosh(sinh(n * h))
+            r = exp(0.5 * (enh - 1 / enh))    ! r = exp(sinh(n * h))
+            x = 0.5 * (r - 1 / r)             ! x = sinh(sinh(n * h))
+            r = 0.5 * (r + 1 / r)             ! r = cosh(sinh(n * h))
+            w = 0.5 * (enh + 1 / enh) * r     ! w = cosh(n * h) * cosh(sinh(n * h))
           end select
 
           ! evaluate function (reuse value if too close to prev. x)
@@ -258,9 +258,9 @@ contains
           g = w * f
 
           ! update maximum integrand
-          if (abs(g) > gmax) then
-            gmax = abs(g)
-            nmax = n
+          if (abs(g) > g_max) then
+            g_max = abs(g)
+            n_max = n
           end if
 
           ! update partial sum
@@ -312,9 +312,9 @@ contains
       !! output number of calls to integrand
 
     integer        :: min_levels_, max_levels_, n_calls_
-    integer        :: sgn, mode, level, dir, n0, n, n_step, nmax, const_counter
-    real(real128) :: bnd(2), rtol_, scale, h, g, gmax
-    real(real128) :: sum, sum_err, x, x_old, xref, xsgn
+    integer        :: sgn, mode, level, dir, n0, n, n_step, n_max, const_counter
+    real(real128) :: bnd(2), rtol_, scale, h, g, g_max
+    real(real128) :: sum, sum_err, x, x_old, x_ref, x_sgn
     real(real128) :: f, f_tmp
     real(real128) :: part, part_old, eh, enh, enh_step, w, r, s
 
@@ -348,15 +348,15 @@ contains
     elseif (ieee_is_finite(bnd(1))) then
       mode  = MODE_EXP_SINH
       scale = 1
-      xsgn  = 1
-      xref  = bnd(1)
-      x     = xref + xsgn ! x = a + exp(sinh(0)) = a + 1
+      x_sgn = 1
+      x_ref = bnd(1)
+      x     = x_ref + x_sgn ! x = a + exp(sinh(0)) = a + 1
     elseif (ieee_is_finite(bnd(2))) then
       mode  = MODE_EXP_SINH
       scale = 1
-      xsgn  = -1
-      xref  = bnd(2)
-      x     = xref + xsgn ! x = b - exp(sinh(0)) = b - 1
+      x_sgn = -1
+      x_ref = bnd(2)
+      x     = x_ref + x_sgn ! x = b - exp(sinh(0)) = b - 1
     else
       mode  = MODE_SINH_SINH
       scale = 1
@@ -373,14 +373,14 @@ contains
     level  = 0
     h      = 2      ! twice initial step size
     n_step = 1      ! n stepsize (1 for level == 0, 2 for level > 0)
-    gmax   = abs(f) ! initial maximum
-    nmax   = 0      ! initial maximum position
+    g_max  = abs(f) ! initial maximum
+    n_max  = 0      ! initial maximum position
     do while ((level < min_levels_) .or. ((sum_err > rtol_ * abs(sum)) .and. (level <= max_levels_)))
       h  = 0.5 * h
       eh = exp(h)
 
       ! start n at maximum of previous level
-      n0 = 2 * nmax
+      n0 = 2 * n_max
 
       ! reset partial sum value
       part = 0
@@ -418,14 +418,14 @@ contains
             w = (enh + 1 / enh) * s / (1 + r) ! w = cosh(n * h) / cosh(sinh(n * h))**2
             x = bnd(2) - scale * s            ! x = (a+b)/2 + (b-a)/2 * tanh(sinh(n * h))
           case (MODE_EXP_SINH)
-            r = exp(0.5 * (enh - 1 / enh))         ! r = exp(sinh(n * h))
-            w = 0.5 * (enh + 1 / enh) * r          ! w = cosh(n * h) * exp(sinh(n * h))
-            x = xref + xsgn * r                    ! x = a[b] +[-] exp(sinh(n * h))
+            r = exp(0.5 * (enh - 1 / enh))    ! r = exp(sinh(n * h))
+            w = 0.5 * (enh + 1 / enh) * r     ! w = cosh(n * h) * exp(sinh(n * h))
+            x = x_ref + x_sgn * r             ! x = a[b] +[-] exp(sinh(n * h))
           case (MODE_SINH_SINH)
-            r = exp(0.5 * (enh - 1 / enh))         ! r = exp(sinh(n * h))
-            x = 0.5 * (r - 1 / r)                  ! x = sinh(sinh(n * h))
-            r = 0.5 * (r + 1 / r)                  ! r = cosh(sinh(n * h))
-            w = 0.5 * (enh + 1 / enh) * r          ! w = cosh(n * h) * cosh(sinh(n * h))
+            r = exp(0.5 * (enh - 1 / enh))    ! r = exp(sinh(n * h))
+            x = 0.5 * (r - 1 / r)             ! x = sinh(sinh(n * h))
+            r = 0.5 * (r + 1 / r)             ! r = cosh(sinh(n * h))
+            w = 0.5 * (enh + 1 / enh) * r     ! w = cosh(n * h) * cosh(sinh(n * h))
           end select
 
           ! evaluate function (reuse value if too close to prev. x)
@@ -439,9 +439,9 @@ contains
           g = w * f
 
           ! update maximum integrand
-          if (abs(g) > gmax) then
-            gmax = abs(g)
-            nmax = n
+          if (abs(g) > g_max) then
+            g_max = abs(g)
+            n_max = n
           end if
 
           ! update partial sum
@@ -500,9 +500,9 @@ contains
       !! output number of calls to integrand
 
     integer        :: min_levels_, max_levels_, n_calls_
-    integer        :: sgn, mode, level, dir, n0, n, n_step, nmax, const_counter
-    real(real64) :: bnd(2), rtol_, dI_dbnd(2), scale, h, dpart_dbnd(2), dpart_dpar(size(par)), g, gmax
-    real(real64) :: dsum_dbnd(2), dsum_dpar(size(par)), sum, sum_err, x, x_old, dx_dbnd(2), xref, xsgn
+    integer        :: sgn, mode, level, dir, n0, n, n_step, n_max, const_counter
+    real(real64) :: bnd(2), rtol_, dI_dbnd(2), scale, h, dpart_dbnd(2), dpart_dpar(size(par)), g, g_max
+    real(real64) :: dsum_dbnd(2), dsum_dpar(size(par)), sum, sum_err, x, x_old, dx_dbnd(2), x_ref, x_sgn
     real(real64) :: f, f_tmp, df_dx, df_dbnd(2), df_dpar(size(par)), df_dpar_tmp(size(par))
     real(real64) :: part, part_old, eh, enh, enh_step, w, r, s
 
@@ -530,23 +530,23 @@ contains
 
     ! determine integration mode and first node
     if (ieee_is_finite(bnd(1)) .and. ieee_is_finite(bnd(2))) then
-      mode   = MODE_TANH_SINH
-      scale  = 0.5 * (bnd(2) - bnd(1))
-      x      = 0.5 * (bnd(1) + bnd(2)) ! x = (a + b) / 2 + (b - a) / 2 * tanh(sinh(0)) = (a + b) / 2
+      mode    = MODE_TANH_SINH
+      scale   = 0.5 * (bnd(2) - bnd(1))
+      x       = 0.5 * (bnd(1) + bnd(2)) ! x = (a + b) / 2 + (b - a) / 2 * tanh(sinh(0)) = (a + b) / 2
       dx_dbnd = [0.5, 0.5]
     elseif (ieee_is_finite(bnd(1))) then
       mode    = MODE_EXP_SINH
       scale   = 1
-      xsgn    = 1
-      xref    = bnd(1)
-      x       = xref + xsgn ! x = a + exp(sinh(0)) = a + 1
+      x_sgn   = 1
+      x_ref   = bnd(1)
+      x       = x_ref + x_sgn ! x = a + exp(sinh(0)) = a + 1
       dx_dbnd = [1.0, 0.0]
     elseif (ieee_is_finite(bnd(2))) then
       mode    = MODE_EXP_SINH
       scale   = 1
-      xsgn    = -1
-      xref    = bnd(2)
-      x       = xref + xsgn ! x = b - exp(sinh(0)) = b - 1
+      x_sgn   = -1
+      x_ref   = bnd(2)
+      x       = x_ref + x_sgn ! x = b - exp(sinh(0)) = b - 1
       dx_dbnd = [0.0, 1.0]
     else
       mode    = MODE_SINH_SINH
@@ -567,14 +567,14 @@ contains
     level  = 0
     h      = 2      ! twice initial step size
     n_step = 1      ! n stepsize (1 for level == 0, 2 for level > 0)
-    gmax   = abs(f) ! initial maximum
-    nmax   = 0      ! initial maximum position
+    g_max  = abs(f) ! initial maximum
+    n_max  = 0      ! initial maximum position
     do while ((level < min_levels_) .or. ((sum_err > rtol_ * abs(sum)) .and. (level <= max_levels_)))
       h  = 0.5 * h
       eh = exp(h)
 
       ! start n at maximum of previous level
-      n0 = 2 * nmax
+      n0 = 2 * n_max
 
       ! reset temporary values
       part       = 0
@@ -617,14 +617,14 @@ contains
             x       = bnd(2) - scale * s            ! x = (a+b)/2 + (b-a)/2 * tanh(sinh(n * h))
             dx_dbnd = [0.0, 1.0] + [0.5, -0.5] * s
           case (MODE_EXP_SINH)
-            r = exp(0.5 * (enh - 1 / enh))         ! r = exp(sinh(n * h))
-            w = 0.5 * (enh + 1 / enh) * r          ! w = cosh(n * h) * exp(sinh(n * h))
-            x = xref + xsgn * r                    ! x = a[b] +[-] exp(sinh(n * h))
+            r = exp(0.5 * (enh - 1 / enh))          ! r = exp(sinh(n * h))
+            w = 0.5 * (enh + 1 / enh) * r           ! w = cosh(n * h) * exp(sinh(n * h))
+            x = x_ref + x_sgn * r                   ! x = a[b] +[-] exp(sinh(n * h))
           case (MODE_SINH_SINH)
-            r = exp(0.5 * (enh - 1 / enh))         ! r = exp(sinh(n * h))
-            x = 0.5 * (r - 1 / r)                  ! x = sinh(sinh(n * h))
-            r = 0.5 * (r + 1 / r)                  ! r = cosh(sinh(n * h))
-            w = 0.5 * (enh + 1 / enh) * r          ! w = cosh(n * h) * cosh(sinh(n * h))
+            r = exp(0.5 * (enh - 1 / enh))          ! r = exp(sinh(n * h))
+            x = 0.5 * (r - 1 / r)                   ! x = sinh(sinh(n * h))
+            r = 0.5 * (r + 1 / r)                   ! r = cosh(sinh(n * h))
+            w = 0.5 * (enh + 1 / enh) * r           ! w = cosh(n * h) * cosh(sinh(n * h))
           end select
 
           ! evaluate function (reuse value if too close to prev. x)
@@ -642,9 +642,9 @@ contains
           g = w * f
 
           ! update maximum integrand
-          if (abs(g) > gmax) then
-            gmax = abs(g)
-            nmax = n
+          if (abs(g) > g_max) then
+            g_max = abs(g)
+            n_max = n
           end if
 
           ! update partial sum
@@ -718,9 +718,9 @@ contains
       !! output number of calls to integrand
 
     integer        :: min_levels_, max_levels_, n_calls_
-    integer        :: sgn, mode, level, dir, n0, n, n_step, nmax, const_counter
-    real(real128) :: bnd(2), rtol_, dI_dbnd(2), scale, h, dpart_dbnd(2), dpart_dpar(size(par)), g, gmax
-    real(real128) :: dsum_dbnd(2), dsum_dpar(size(par)), sum, sum_err, x, x_old, dx_dbnd(2), xref, xsgn
+    integer        :: sgn, mode, level, dir, n0, n, n_step, n_max, const_counter
+    real(real128) :: bnd(2), rtol_, dI_dbnd(2), scale, h, dpart_dbnd(2), dpart_dpar(size(par)), g, g_max
+    real(real128) :: dsum_dbnd(2), dsum_dpar(size(par)), sum, sum_err, x, x_old, dx_dbnd(2), x_ref, x_sgn
     real(real128) :: f, f_tmp, df_dx, df_dbnd(2), df_dpar(size(par)), df_dpar_tmp(size(par))
     real(real128) :: part, part_old, eh, enh, enh_step, w, r, s
 
@@ -748,23 +748,23 @@ contains
 
     ! determine integration mode and first node
     if (ieee_is_finite(bnd(1)) .and. ieee_is_finite(bnd(2))) then
-      mode   = MODE_TANH_SINH
-      scale  = 0.5 * (bnd(2) - bnd(1))
-      x      = 0.5 * (bnd(1) + bnd(2)) ! x = (a + b) / 2 + (b - a) / 2 * tanh(sinh(0)) = (a + b) / 2
+      mode    = MODE_TANH_SINH
+      scale   = 0.5 * (bnd(2) - bnd(1))
+      x       = 0.5 * (bnd(1) + bnd(2)) ! x = (a + b) / 2 + (b - a) / 2 * tanh(sinh(0)) = (a + b) / 2
       dx_dbnd = [0.5, 0.5]
     elseif (ieee_is_finite(bnd(1))) then
       mode    = MODE_EXP_SINH
       scale   = 1
-      xsgn    = 1
-      xref    = bnd(1)
-      x       = xref + xsgn ! x = a + exp(sinh(0)) = a + 1
+      x_sgn   = 1
+      x_ref   = bnd(1)
+      x       = x_ref + x_sgn ! x = a + exp(sinh(0)) = a + 1
       dx_dbnd = [1.0, 0.0]
     elseif (ieee_is_finite(bnd(2))) then
       mode    = MODE_EXP_SINH
       scale   = 1
-      xsgn    = -1
-      xref    = bnd(2)
-      x       = xref + xsgn ! x = b - exp(sinh(0)) = b - 1
+      x_sgn   = -1
+      x_ref   = bnd(2)
+      x       = x_ref + x_sgn ! x = b - exp(sinh(0)) = b - 1
       dx_dbnd = [0.0, 1.0]
     else
       mode    = MODE_SINH_SINH
@@ -785,14 +785,14 @@ contains
     level  = 0
     h      = 2      ! twice initial step size
     n_step = 1      ! n stepsize (1 for level == 0, 2 for level > 0)
-    gmax   = abs(f) ! initial maximum
-    nmax   = 0      ! initial maximum position
+    g_max  = abs(f) ! initial maximum
+    n_max  = 0      ! initial maximum position
     do while ((level < min_levels_) .or. ((sum_err > rtol_ * abs(sum)) .and. (level <= max_levels_)))
       h  = 0.5 * h
       eh = exp(h)
 
       ! start n at maximum of previous level
-      n0 = 2 * nmax
+      n0 = 2 * n_max
 
       ! reset temporary values
       part       = 0
@@ -835,14 +835,14 @@ contains
             x       = bnd(2) - scale * s            ! x = (a+b)/2 + (b-a)/2 * tanh(sinh(n * h))
             dx_dbnd = [0.0, 1.0] + [0.5, -0.5] * s
           case (MODE_EXP_SINH)
-            r = exp(0.5 * (enh - 1 / enh))         ! r = exp(sinh(n * h))
-            w = 0.5 * (enh + 1 / enh) * r          ! w = cosh(n * h) * exp(sinh(n * h))
-            x = xref + xsgn * r                    ! x = a[b] +[-] exp(sinh(n * h))
+            r = exp(0.5 * (enh - 1 / enh))          ! r = exp(sinh(n * h))
+            w = 0.5 * (enh + 1 / enh) * r           ! w = cosh(n * h) * exp(sinh(n * h))
+            x = x_ref + x_sgn * r                   ! x = a[b] +[-] exp(sinh(n * h))
           case (MODE_SINH_SINH)
-            r = exp(0.5 * (enh - 1 / enh))         ! r = exp(sinh(n * h))
-            x = 0.5 * (r - 1 / r)                  ! x = sinh(sinh(n * h))
-            r = 0.5 * (r + 1 / r)                  ! r = cosh(sinh(n * h))
-            w = 0.5 * (enh + 1 / enh) * r          ! w = cosh(n * h) * cosh(sinh(n * h))
+            r = exp(0.5 * (enh - 1 / enh))          ! r = exp(sinh(n * h))
+            x = 0.5 * (r - 1 / r)                   ! x = sinh(sinh(n * h))
+            r = 0.5 * (r + 1 / r)                   ! r = cosh(sinh(n * h))
+            w = 0.5 * (enh + 1 / enh) * r           ! w = cosh(n * h) * cosh(sinh(n * h))
           end select
 
           ! evaluate function (reuse value if too close to prev. x)
@@ -860,9 +860,9 @@ contains
           g = w * f
 
           ! update maximum integrand
-          if (abs(g) > gmax) then
-            gmax = abs(g)
-            nmax = n
+          if (abs(g) > g_max) then
+            g_max = abs(g)
+            n_max = n
           end if
 
           ! update partial sum

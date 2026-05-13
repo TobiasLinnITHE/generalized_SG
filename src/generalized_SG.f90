@@ -34,18 +34,16 @@ module generalized_SG_m
         !! return k-th derivative of distribution function
     end function
 
-    subroutine inv_distribution(F, eta, deta_dF) bind(c)
+    function inv_distribution(F) result(eta) bind(c)
       !! inverse of cumulative distribution function
 
       import :: c_double
 
       real(c_double), value, intent(in)  :: F
         !! value of cumulative distribution function
-      real(c_double),        intent(out) :: eta
+      real(c_double)                     :: eta
         !! output normalized chemical potential corresponding to F
-      real(c_double),        intent(out) :: deta_dF
-        !! output derivative of eta wrt F
-    end subroutine
+    end function
 
     function int_distribution(eta1, eta2, k) result(I) bind(c)
       !! integrate cumulative distribution function
@@ -66,7 +64,7 @@ module generalized_SG_m
 
   enum, bind(c)
     enumerator :: STATUS_SUCCESS          = 0
-      !! successfull calculation
+      !! successful calculation
     enumerator :: STATUS_INVALID_INPUT    = 1
       !! invalid input parameters (e.g. non-positive density)
     enumerator :: STATUS_ITERATION_FAILED = 2
@@ -197,9 +195,9 @@ contains
     ! initialize edge state
     if (flip_edge) then
       ! keep potential drop positive by flipping edge direction
-      call es%init(inv_dist, [F(2), F(1)], - dpot)
+      call es%init(dist, inv_dist, [F(2), F(1)], - dpot)
     else
-      call es%init(inv_dist, F, dpot)
+      call es%init(dist, inv_dist, F, dpot)
     end if
 
     ! debug info
@@ -228,9 +226,10 @@ contains
   end subroutine
 
 
-  subroutine edge_state_init(this, inv_dist, F, dpot)
+  subroutine edge_state_init(this, dist, inv_dist, F, dpot)
     !! initialize edge state
     class(edge_state), intent(out) :: this
+    procedure(distribution)        :: dist
     procedure(inv_distribution)    :: inv_dist
       !! inverse distribution function
     real(real64),      intent(in)  :: F(2)
@@ -242,8 +241,10 @@ contains
     this%dpot = dpot
 
     ! get chemical potential at edge endpoints
-    call inv_dist(this%F(1), this%eta(1), this%deta_dF(1))
-    call inv_dist(this%F(2), this%eta(2), this%deta_dF(2))
+    this%eta(1) = inv_dist(this%F(1))
+    this%eta(2) = inv_dist(this%F(2))
+    this%deta_dF(1) = 1 / dist(this%eta(1), 1)
+    this%deta_dF(2) = 1 / dist(this%eta(2), 1)
 
     ! chemical potential drop
     this%deta = this%eta(2) - this%eta(1)
@@ -454,9 +455,9 @@ contains
     procedure(int_distribution)   :: int_dist
       !! integral over cumulative distribution function
     real(real64),     intent(out) :: j_min
-      !! ouput lower bound of j
+      !! output lower bound of j
     real(real64),     intent(out) :: j_max
-      !! ouput upper bound of j
+      !! output upper bound of j
 
     real(real64) :: dum(2)
 
@@ -525,7 +526,7 @@ contains
     type(edge_state), intent(in)  :: es
       !! common parameters
     real(real64),     intent(in)  :: t
-      !! transformed soultion variable
+      !! transformed solution variable
     real(real64),     intent(out) :: j
       !! output edge current
     real(real64),     intent(out) :: dj_deta(2)
@@ -633,7 +634,7 @@ contains
     !! initialize parameters for the analytical part of the residual calculation
     type(edge_state),             intent(in)  :: es
     procedure(distribution)                   :: dist
-      !! cummulative distribution function
+      !! cumulative distribution function
     type(analytical_integration), intent(out) :: an
 
     real(real64) :: FL2, FL3
