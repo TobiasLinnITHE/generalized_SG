@@ -459,8 +459,6 @@ contains
     real(real64),     intent(out) :: j_max
       !! output upper bound of j
 
-    real(real64) :: dum(2)
-
     select case (es%case)
     case (CASE0A)
       j_min = int_dist(es%eta(2) - es%dpot, es%eta(2), -1)
@@ -577,20 +575,27 @@ contains
     real(real64),                 intent(out) :: dj_ddpot
       !! output derivative of j wrt dpot
 
-    real(real64) :: e, par(2), eta_cutoff, dres_dpar(2)
+    real(real64) :: par(3), offset_cutoff, dres_dpar(3), dres_dcutoff, dres_ddeta
 
     ! transform: j = dpot * FL * (1 - deta_sgn * exp(-t))
     call transform_t_to_j(es, t, j, dj_deta, dj_ddpot, dj_dt)
 
-    ! tanh-sinh quadrature, leave out part close to eta(1) (might have singularity)
-    par = [j, es%dpot]
-    eta_cutoff = es%eta(1) + es%deta_sgn * an%cutoff
-    call quad(integrand, eta_cutoff, es%eta(2), par, res, dres_deta(1), dres_deta(2), dres_dpar, min_levels = MIN_QUAD_LEVELS, max_levels = MAX_QUAD_LEVELS)
+    ! Split integral in two parts at position c = es%deta_sgn * an%cutoff:
+    ! first part from eta(1) to eta(1) + c (might have singularity), second part from eta(1) + c to eta(2).
+
+    ! Second part: tanh-sinh quadrature
+    ! Substitution eta = eta' + eta(1) such that the integral bounds go from c to deta.
+    ! => avoid precision loss when calculating eta(1) + c which can otherwise lead to the zero of the residual
+    ! being slightly out of the bounds for j.
+    par = [j, es%dpot, es%eta(1)]
+    offset_cutoff = es%deta_sgn * an%cutoff
+    call quad(integrand, offset_cutoff, es%deta, par, res, dres_dcutoff, dres_ddeta, dres_dpar, min_levels = MIN_QUAD_LEVELS, max_levels = MAX_QUAD_LEVELS)
     dres_dt      = dres_dpar(1) * dj_dt
-    dres_deta(1) = dres_deta(1) * (1 + es%deta_sgn * an%dcutoff_detaL) + dres_dpar(1) * dj_deta(1)
+    dres_deta(1) = dres_dcutoff * es%deta_sgn * an%dcutoff_detaL - dres_ddeta + dres_dpar(3) + dres_dpar(1) * dj_deta(1)
+    dres_deta(2) = dres_ddeta
     dres_ddpot   = dres_dpar(2) + dres_dpar(1) * dj_ddpot
 
-    ! analytical integration for missing part (distribution function approximated by first order Taylor series)
+    ! first part: analytical integration (distribution function approximated by first order Taylor series)
     call residual_analytical(an, t, j, dj_dt, dj_deta, dj_ddpot, res, dres_dt, dres_deta, dres_ddpot)
 
     ! res = integral - 1 == 0
@@ -598,31 +603,32 @@ contains
 
   contains
 
-    subroutine integrand(eta, n_par, par, u, du_deta, du_dpar) bind(c)
-      real(c_double), value, intent(in)  :: eta
-        !! chemical potential
+    subroutine integrand(offset, n_par, par, u, du_deta, du_dpar) bind(c)
+      real(c_double), value, intent(in)  :: offset
+        !! chemical potential relative to etaL
       integer(c_int), value, intent(in)  :: n_par
         !! number of additional parameters
       real(c_double),        intent(in)  :: par(n_par)
-        !! par = [j, dpot]
+        !! par = [j, dpot, etaL]
       real(c_double),        intent(out) :: u
         !! output integrand u(eta)
       real(c_double),        intent(out) :: du_deta
         !! output derivative of u wrt eta
       real(c_double),        intent(out) :: du_dpar(n_par)
-        !! du_dpar = [du_dj, du_ddpot]
+        !! du_dpar = [du_dj, du_ddpot, du_detaL]
 
       real(real64) :: F, dF_deta, q
 
-      associate (j => par(1), dpot => par(2), du_dj => du_dpar(1), du_ddpot => du_dpar(2))
+      associate (j => par(1), dpot => par(2), du_dj => du_dpar(1), du_ddpot => du_dpar(2), du_detaL => du_dpar(3))
         ! u = F / (dpot * F - j)
-        F        = dist(eta, 0)
-        dF_deta  = dist(eta, 1)
+        F        = dist(par(3) + offset, 0)
+        dF_deta  = dist(par(3) + offset, 1)
         q        = dpot * F - j
         u        = F / q
         du_deta  = (1 - u * dpot) / q * dF_deta
         du_dj    = u / q
         du_ddpot = - u**2
+        du_detaL = du_deta
       end associate
     end subroutine
 
@@ -715,7 +721,7 @@ contains
       !! output derivative of j wrt dpot
 
     integer               :: k
-    real(real64)          :: Itmp, dItmp(2)
+    real(real64)          :: Itmp
     type(dual_3(real128)) :: I(-5:0), jc(5), dpot, jd, tmp, tmp2
 
     ! get I_k = integral_etaL^etaR F(eta)^k deta for k = -5 to 0
